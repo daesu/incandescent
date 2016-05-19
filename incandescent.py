@@ -1,91 +1,100 @@
-#!/usr/bin/python
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import str
+from builtins import object
+
+import base64
 from hashlib import sha1
-import urllib
 import hmac
-import json
-import time
 import requests
+import time
+import urllib.request
+import urllib.parse
+import urllib.error
 
 ADD_ENDPOINT = "https://incandescent.xyz/api/add/"
 GET_ENDPOINT = "https://incandescent.xyz/api/get/"
 
 # How long to wait before re-requesting API for result
 WAIT_TIME = 10
+VERIFY_CERT = False
 
-class Client:
 
-	def __init__(self, uid, apikey):
+class Client(object):
 
-			self.uid = uid
-			self.apikey = apikey
-			self.data = {}
+    def __init__(self, uid, apikey):
 
-	def addImageUrl(self, imageUrl):
+        self.uid = uid
+        self.apikey = apikey
+        self.data = {}
 
-			self.imageUrl = imageUrl
-			self.data['images'] = self.imageUrl
+    def addImageUrl(self, imageUrl):
 
-	def makeRequestData(self):
+        self.imageUrl = imageUrl
+        self.data['images'] = self.imageUrl
 
-			# Set expiry time (unixtime now + value)
-			expiresSeconds = int(time.time())
-			expiresSeconds = expiresSeconds + 1000 # max is 1200
+    def makeRequestData(self):
 
-			stringToSign = str(self.uid) + "\n" + str(expiresSeconds);
+        # Set expiry time (unixtime now + value)
+        expiresSeconds = int(time.time())
+        expiresSeconds = expiresSeconds + 1000  # max is 1200
 
-			hashed = hmac.new(self.apikey, stringToSign, sha1)
+        stringToSign = str(self.uid) + "\n" + str(expiresSeconds)
 
-			# The signature
-			signature = urllib.quote_plus(hashed.digest().encode("base64").rstrip('\n'))
+        hashed = hmac.new(self.apikey.encode(), stringToSign.encode(), sha1)
 
-			self.data['uid'] = self.uid;
-			self.data['expires'] = expiresSeconds;
-			self.data['signature'] = signature;
+        # The signature
+        encoded = base64.b64encode(hashed.digest())
+        signature = urllib.parse.quote_plus(encoded)
 
-			print self.data
+        self.data['uid'] = self.uid
+        self.data['expires'] = expiresSeconds
+        self.data['signature'] = signature
 
-	def makeRequest(self):
+        print(self.data)
 
-			try:
-				r = requests.post(ADD_ENDPOINT, json=self.data)
+    def makeRequest(self):
 
-				if r.status_code == 200:
-					response = json.loads(r.content)
+        try:
+            r = requests.post(ADD_ENDPOINT, json=self.data, verify=VERIFY_CERT)
 
-					if 'project_id' in response:
-						project_id = response['project_id']
+            if r.status_code == 200:
+                response = r.json()
 
-						self.project_id = project_id
-						self.data['images'] = None # Remove from request
+                if 'project_id' in response:
+                    project_id = response['project_id']
 
-					elif 'error' in response:
-						self.project_id = None 
-						print response['error']
+                    self.project_id = project_id
+                    self.data['images'] = None  # Remove from request
 
-			except StandardError, err: # TODO handle errors
-					self.project_id = None 
+                elif 'error' in response:
+                    self.project_id = None
+                    print(response['error'])
 
-	def getResults(self):
+        except Exception as err:  # TODO handle errors
+            self.project_id = None
 
-			try:
-				self.data['project_id'] = self.project_id;
+    def getResults(self):
 
-				r = requests.post(GET_ENDPOINT, json=self.data)
+        try:
+            self.data['project_id'] = self.project_id
 
-				response = json.loads(r.content)
+            r = requests.post(GET_ENDPOINT, json=self.data, verify=VERIFY_CERT)
+            response = r.json()
 
-				if 'status' not in response:
-					# Should have result
-					print response
-					
-				elif response['status'] == 710:
-					print "Waiting ... ", WAIT_TIME, " Seconds"
-					time.sleep(WAIT_TIME) 
-					self.getResults() #Retry  
+            if 'status' not in response:
+                # Should have result
+                print(response)
 
-				elif response['status'] == 755:
-					print "No Results for image"
+            elif response['status'] == 710:
+                print("Waiting ... ", WAIT_TIME, " Seconds")
+                time.sleep(WAIT_TIME)
+                self.getResults()  # Retry
 
-			except StandardError, err:
-				print err
-				self.project_id = None 			
+            elif response['status'] == 755:
+                print("No Results for image")
+
+        except Exception as err:
+            print(err)
+            self.project_id = None
