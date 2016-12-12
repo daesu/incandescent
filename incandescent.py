@@ -18,7 +18,7 @@ GET_ENDPOINT = "https://incandescent.xyz/api/get/"
 
 # How long to wait before re-requesting API for result
 WAIT_TIME = 10
-VERIFY_CERT = False
+VERIFY_CERT = True
 
 
 class Client(object):
@@ -64,6 +64,7 @@ class Client(object):
 
                 if 'project_id' in response:
                     project_id = response['project_id']
+                    self.data['project_id'] = project_id
 
                     self.project_id = project_id
                     self.data['images'] = None  # Remove from request
@@ -74,6 +75,7 @@ class Client(object):
 
         except Exception as err:  # TODO handle errors
             self.project_id = None
+            print (err)
 
     def getResults(self):
 
