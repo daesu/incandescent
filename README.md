@@ -7,15 +7,15 @@ pip install -r requirements.txt
 ## Usage
 See `example.py`
 
-				# Add credentials
-			  search = Client(uid, apikey)
+	# Add credentials
+	search = Client(uid, apikey)
 
-			  # Add an image URL
-			  search.addImageUrl(<image_url>)
+	# Add an image URL
+	search.addImageUrl(<image_url>)
 
-			  # Generate the request and POST
-			  search.makeRequestData()
-			  search.makeRequest()
+	# Generate the request and POST
+	search.makeRequestData()
+	search.makeRequest()
 
-			  # Request the result 
-			  search.getResults()
+	# Request the result 
+	search.getResults()
